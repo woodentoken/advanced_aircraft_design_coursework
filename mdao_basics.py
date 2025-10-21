@@ -21,8 +21,10 @@ def get_results(filename):
     return results
 
 
-def main(unconstrained=False, constrained=False, quiz=False, inclass=False):
-    if all([not unconstrained, not constrained, not quiz, not inclass]):
+def main(
+    unconstrained=False, constrained=False, quiz=False, inclass=False, quiz2=False
+):
+    if all([not unconstrained, not constrained, not quiz, not inclass, not quiz2]):
         print("Please select at least one problem to run")
         return
 
@@ -53,6 +55,8 @@ def main(unconstrained=False, constrained=False, quiz=False, inclass=False):
 
             unconstrained_results = get_results("test_out/unconstrained.sql")
             ic(unconstrained_results)
+
+        unconstrained()
 
     if constrained:
 
@@ -85,6 +89,8 @@ def main(unconstrained=False, constrained=False, quiz=False, inclass=False):
 
             constrained_results = get_results("test2_out/constrained.sql")
             ic(constrained_results)
+
+        constrained()
 
     if quiz:
 
@@ -121,6 +127,8 @@ def main(unconstrained=False, constrained=False, quiz=False, inclass=False):
 
             ic(quiz_results)
 
+        quiz()
+
     if inclass:
 
         def inclass():
@@ -150,6 +158,62 @@ def main(unconstrained=False, constrained=False, quiz=False, inclass=False):
             ic(inclass_problem.get_val("inclass.y"))
             ic(inclass_problem.get_val("inclass.f"))
 
+        inclass()
+
+    if quiz2:
+
+        class Quiz2(om.ExplicitComponent):
+            def setup(self):
+                self.add_input("x", val=-1.0)
+                self.add_input("y", val=7.0)
+
+                self.add_output("f", val=0.0)
+
+            def setup_partials(self):
+                self.declare_partials("*", "*")
+
+            def compute(self, inputs, outputs):
+                x = inputs["x"]
+                y = inputs["y"]
+                outputs["f"] = (x - 4) ** 2 + (x * y) + (y + 3) ** 2 - 3
+
+        # defines a component group
+        model = om.Group()
+        model.add_subsystem("objective", Quiz2(), promotes_inputs=["x", "y"])
+        model.add_subsystem(
+            "constraint", om.ExecComp("g = x**2 + y"), promotes_inputs=["x", "y"]
+        )
+
+        # unifies the input values
+        model.set_input_defaults("x", 0.0)
+        model.set_input_defaults("y", 0.0)
+
+        # defines the optimization problem
+        prob = om.Problem(model)
+
+        # evaluate the model at a specific point
+        prob.setup()
+        prob.run_model()
+        ic(prob.get_val("objective.f"))
+        ic(prob.get_val("constraint.g"))
+
+        prob.driver = om.ScipyOptimizeDriver()
+        prob.driver.options["optimizer"] = "COBYLA"
+        # prob.driver.options["optimizer"] = "BFGS"
+        # prob.
+        prob.model.add_design_var("x", lower=-50.0, upper=50.0)
+        prob.model.add_design_var("y", lower=-50.0, upper=50.0)
+        prob.model.add_objective("objective.f")
+        prob.model.add_constraint("constraint.g", lower=1, upper=8)
+
+        prob.setup()
+        prob.run_driver()
+
+        ic(prob.get_val("x"))
+        ic(prob.get_val("y"))
+        ic(prob.get_val("objective.f"))
+        ic(prob.get_val("constraint.g"))
+
 
 if __name__ == "__main__":
-    main(inclass=True)
+    main(quiz2=True)
