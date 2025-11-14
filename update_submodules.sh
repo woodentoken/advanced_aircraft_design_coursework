@@ -1,8 +1,10 @@
 # install libraries
 sudo apt update
+sudo apt upgrade
+sudo apt install -y build-essential pkg-config
 sudo apt install -y pkg-config gfortran libblas-dev liblapack-dev
 sudo apt install -y coinor-libipopt-dev
-sudo apt install -y python3-tk
+sudo apt install python3-tk
 
 # this script initializes and updates git submodules, then runs 'uv sync'
 
